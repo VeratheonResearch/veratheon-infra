@@ -1,0 +1,65 @@
+version: "3.9"
+
+services:
+  # Backend - Python FastAPI research agent
+  veratheon-research:
+    build:
+      context: ../veratheon-research
+      dockerfile: Dockerfile
+    container_name: veratheon-research
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8085
+    ports:
+      - "8085:8085"
+    volumes:
+      - ../veratheon-research/reports:/app/reports
+      - research-cache:/app/.cache
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - veratheon-network
+    command: ["python", "-u", "server.py"]
+
+  # Frontend - SvelteKit UI
+  veratheon-ui:
+    build:
+      context: ../veratheon-ui
+      dockerfile: Dockerfile
+    container_name: veratheon-ui
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - API_URL=http://veratheon-research:8085
+      # Configure undici timeouts for long-running requests
+      - UNDICI_HEADERS_TIMEOUT=3600000
+      - UNDICI_BODY_TIMEOUT=3600000
+      - UNDICI_CONNECT_TIMEOUT=30000
+      - NODE_OPTIONS=--max-http-header-size=32768
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../veratheon-ui:/app
+      - /app/node_modules
+    depends_on:
+      veratheon-research:
+        condition: service_healthy
+    networks:
+      - veratheon-network
+
+networks:
+  veratheon-network:
+    driver: bridge
+    name: veratheon-network
+
+volumes:
+  research-cache:
+    name: veratheon-research-cache
