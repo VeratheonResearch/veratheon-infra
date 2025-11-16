@@ -13,6 +13,10 @@ services:
     environment:
       - HOST=0.0.0.0
       - PORT=8085
+      # Override Supabase URL to reach host machine (where Supabase runs locally)
+      - SUPABASE_URL=http://host.docker.internal:54321
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8085:8085"
     volumes:
@@ -38,12 +42,17 @@ services:
     env_file:
       - .env
     environment:
-      - API_URL=http://veratheon-research:8085
+      - VITE_API_URL=http://veratheon-research:8085
+      # Override Supabase URL for server-side API routes to reach host machine
+      # Note: VITE_SUPABASE_URL (for browser) stays as 127.0.0.1 from .env
+      - SUPABASE_URL=http://host.docker.internal:54321
       # Configure undici timeouts for long-running requests
       - UNDICI_HEADERS_TIMEOUT=3600000
       - UNDICI_BODY_TIMEOUT=3600000
       - UNDICI_CONNECT_TIMEOUT=30000
       - NODE_OPTIONS=--max-http-header-size=32768
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "5173:5173"
     volumes:
